@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>White 6 Video & YouTube Editor</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        :root { --line-green: #00b900; --yt-red: #ff0000; --bg: #f8f9fa; }
+        body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 15px; }
+        .card { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 500px; margin: auto; }
+        h2 { color: var(--line-green); text-align: center; margin-top: 0; }
+        
+        .tab-group { display: flex; margin-bottom: 15px; border-radius: 8px; overflow: hidden; border: 1px solid #ddd; }
+        .tab { flex: 1; padding: 10px; text-align: center; cursor: pointer; background: #eee; transition: 0.3s; }
+        .tab.active { background: var(--line-green); color: white; font-weight: bold; }
+        .tab.yt-active { background: var(--yt-red); color: white; font-weight: bold; }
+
+        label { display: block; font-size: 14px; font-weight: bold; margin: 10px 0 5px; }
+        input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        
+        /* 預覽視窗 */
+        .video-viewport { 
+            position: relative; width: 100%; aspect-ratio: 16/9; 
+            background: #000; border-radius: 10px; margin: 20px 0; overflow: hidden; 
+        }
+        #mp4Preview, #ytPreview { width: 100%; height: 100%; display: none; border: none; }
+        #danmakuLayer { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            pointer-events: none; z-index: 10; 
+        }
+
+        .btn-send { width: 100%; padding: 15px; background: var(--line-green); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .danmaku-item { position: absolute; color: white; font-weight: bold; text-shadow: 1px 1px 3px #000; white-space: nowrap; transition: transform 4s linear; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>𓃥 影片/YouTube 編輯器</h2>
+
+    <div class="tab-group">
+        <div id="tabMp4" class="tab active" onclick="switchMode('mp4')">一般影片 (.mp4)</div>
+        <div id="tabYt" class="tab" onclick="switchMode('yt')">YouTube</div>
+    </div>
+
+    <div id="inputArea">
+        <label id="urlLabel">影片網址 (Direct MP4 URL)</label>
+        <input type="text" id="mainInput" placeholder="請輸入網址..." oninput="syncPreview()">
+        
+        <label id="previewLabel">預覽圖網址 (Video Message 必填)</label>
+        <input type="text" id="previewInput" placeholder="https://..." oninput="syncPreview()">
+
+        <label>模擬留言內容 (以逗號分隔)</label>
+        <input type="text" id="commentInput" value="好帥喔, 白六萬歲！, 這影片太猛了, 🎥🎥🎥" oninput="restartDanmaku()">
+    </div>
+
+    <div class="video-viewport">
+        <video id="mp4Preview" controls muted loop></video>
+        <iframe id="ytPreview" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+        <div id="danmakuLayer"></div>
+    </div>
+
+    <button class="btn-send" onclick="sendToLine()">發送至 LINE</button>
+</div>
+
+<script>
+    let currentMode = 'mp4';
+    let danmakuTimer = null;
+
+    // 切換模式
+    function switchMode(mode) {
+        currentMode = mode;
+        const tabMp4 = document.getElementById('tabMp4');
+        const tabYt = document.getElementById('tabYt');
+        const pInput = document.getElementById('previewInput');
+        const pLabel = document.getElementById('previewLabel');
+
+        if(mode === 'mp4') {
+            tabMp4.className = 'tab active';
+            tabYt.className = 'tab';
+            document.getElementById('urlLabel').innerText = "影片網址 (Direct MP4 URL)";
+            pInput.style.display = 'block';
+            pLabel.style.display = 'block';
+        } else {
+            tabMp4.className = 'tab';
+            tabYt.className = 'tab yt-active';
+            document.getElementById('urlLabel').innerText = "YouTube 影片 ID (例如: J3iO2PYEEnw)";
+            pInput.style.display = 'none';
+            pLabel.style.display = 'none';
+        }
+        syncPreview();
+    }
+
+    // 同步預覽畫面
+    function syncPreview() {
+        const val = document.getElementById('mainInput').value;
+        const mp4 = document.getElementById('mp4Preview');
+        const yt = document.getElementById('ytPreview');
+
+        if(currentMode === 'mp4') {
+            yt.style.display = 'none';
+            mp4.style.display = 'block';
+            if(val.endsWith('.mp4')) {
+                mp4.src = val;
+                mp4.play().catch(()=>{});
+            }
+        } else {
+            mp4.style.display = 'none';
+            yt.style.display = 'block';
+            if(val.length > 5) {
+                yt.src = `https://www.youtube.com/embed/${val}?autoplay=1&mute=1&enablejsapi=1`;
+            }
+        }
+    }
+
+    // 彈幕動畫
+    function spawnDanmaku() {
+        const texts = document.getElementById('commentInput').value.split(',');
+        const layer = document.getElementById('danmakuLayer');
+        const div = document.createElement('div');
+        div.className = 'danmaku-item';
+        div.innerText = texts[Math.floor(Math.random() * texts.length)].trim();
+        div.style.top = Math.random() * 80 + '%';
+        div.style.left = '100%';
+        layer.appendChild(div);
+
+        setTimeout(() => {
+            div.style.transform = `translateX(-${window.innerWidth + 500}px)`;
+        }, 50);
+        setTimeout(() => div.remove(), 4500);
+    }
+
+    function restartDanmaku() {
+        clearInterval(danmakuTimer);
+        danmakuTimer = setInterval(spawnDanmaku, 1500);
+    }
+
+    // 發送邏輯
+    async function sendToLine() {
+        const val = document.getElementById('mainInput').value;
+        const pUrl = document.getElementById('previewInput').value;
+
+        if (!liff.isInClient()) {
+            alert("請在 LINE 內執行發送功能"); return;
+        }
+
+        let msg = {};
+        if(currentMode === 'mp4') {
+            msg = { type: "video", originalContentUrl: val, previewImageUrl: pUrl || 'https://via.placeholder.com/800' };
+        } else {
+            // YouTube 模式：發送一個帶有 LIFF 連結的 Flex Message
+            msg = {
+                type: "flex",
+                altText: "有人分享了 YouTube 影片給你",
+                contents: {
+                    "type": "bubble",
+                    "hero": { "type": "image", "url": `https://img.youtube.com/vi/${val}/mqdefault.jpg`, "size": "full", "aspectRatio": "16:9", "action": { "type": "uri", "uri": `https://liff.line.me/${liff.id}?v=${val}` } },
+                    "footer": { "type": "box", "layout": "vertical", "contents": [{ "type": "button", "action": { "type": "uri", "label": "點我播放影片", "uri": `https://liff.line.me/${liff.id}?v=${val}` }, "style": "primary", "color": "#ff0000" }] }
+                }
+            };
+        }
+        
+        await liff.sendMessages([msg]);
+        liff.closeWindow();
+    }
+
+    window.onload = async () => {
+        await liff.init({ liffId: "你的_LIFF_ID" });
+        restartDanmaku();
+    };
+</script>
+
+</body>
+</html>
