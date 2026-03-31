@@ -2,173 +2,177 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>White 6 Video & YouTube Editor</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>白六影片傳送器</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-        :root { --line-green: #00b900; --yt-red: #ff0000; --bg: #f8f9fa; }
-        body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 15px; }
-        .card { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 500px; margin: auto; }
-        h2 { color: var(--line-green); text-align: center; margin-top: 0; }
+        :root { --line-green: #00b900; --yt-red: #ff0000; --bg: #f4f7f9; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 15px; display: flex; justify-content: center; }
+        .card { background: white; border-radius: 20px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        h2 { color: var(--line-green); text-align: center; margin: 0 0 20px 0; font-size: 20px; }
         
-        .tab-group { display: flex; margin-bottom: 15px; border-radius: 8px; overflow: hidden; border: 1px solid #ddd; }
-        .tab { flex: 1; padding: 10px; text-align: center; cursor: pointer; background: #eee; transition: 0.3s; }
-        .tab.active { background: var(--line-green); color: white; font-weight: bold; }
-        .tab.yt-active { background: var(--yt-red); color: white; font-weight: bold; }
+        .tab-group { display: flex; background: #eee; border-radius: 10px; padding: 4px; margin-bottom: 20px; }
+        .tab { flex: 1; padding: 10px; text-align: center; cursor: pointer; border-radius: 8px; font-size: 14px; color: #666; transition: 0.3s; }
+        .tab.active-mp4 { background: var(--line-green); color: white; font-weight: bold; }
+        .tab.active-yt { background: var(--yt-red); color: white; font-weight: bold; }
 
-        label { display: block; font-size: 14px; font-weight: bold; margin: 10px 0 5px; }
-        input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        .field { margin-bottom: 15px; }
+        label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #444; }
+        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
         
-        /* 預覽視窗 */
-        .video-viewport { 
+        .preview-container { 
             position: relative; width: 100%; aspect-ratio: 16/9; 
-            background: #000; border-radius: 10px; margin: 20px 0; overflow: hidden; 
+            background: #000; border-radius: 12px; margin: 15px 0; overflow: hidden; 
         }
-        #mp4Preview, #ytPreview { width: 100%; height: 100%; display: none; border: none; }
-        #danmakuLayer { 
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            pointer-events: none; z-index: 10; 
-        }
+        #mp4View, #ytView { width: 100%; height: 100%; display: none; border: none; }
+        #danmakuLayer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+        .danmaku { position: absolute; color: white; font-weight: bold; text-shadow: 1px 1px 3px #000; white-space: nowrap; font-size: 18px; }
 
-        .btn-send { width: 100%; padding: 15px; background: var(--line-green); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
-        .danmaku-item { position: absolute; color: white; font-weight: bold; text-shadow: 1px 1px 3px #000; white-space: nowrap; transition: transform 4s linear; }
+        .btn-send { width: 100%; padding: 16px; background: var(--line-green); color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .btn-send:active { transform: scale(0.98); opacity: 0.9; }
+        .status-msg { font-size: 12px; color: #999; text-align: center; margin-top: 10px; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>𓃥 影片/YouTube 編輯器</h2>
+    <h2>𓃥 影片傳送編輯器</h2>
 
     <div class="tab-group">
-        <div id="tabMp4" class="tab active" onclick="switchMode('mp4')">一般影片 (.mp4)</div>
-        <div id="tabYt" class="tab" onclick="switchMode('yt')">YouTube</div>
+        <div id="tabMp4" class="tab active-mp4" onclick="setMode('mp4')">MP4 直連</div>
+        <div id="tabYt" class="tab" onclick="setMode('yt')">YouTube</div>
     </div>
 
-    <div id="inputArea">
-        <label id="urlLabel">影片網址 (Direct MP4 URL)</label>
-        <input type="text" id="mainInput" placeholder="請輸入網址..." oninput="syncPreview()">
-        
-        <label id="previewLabel">預覽圖網址 (Video Message 必填)</label>
-        <input type="text" id="previewInput" placeholder="https://..." oninput="syncPreview()">
-
-        <label>模擬留言內容 (以逗號分隔)</label>
-        <input type="text" id="commentInput" value="好帥喔, 白六萬歲！, 這影片太猛了, 🎥🎥🎥" oninput="restartDanmaku()">
+    <div class="field">
+        <label id="inputLabel">影片網址 (.mp4)</label>
+        <input type="text" id="urlInput" placeholder="輸入網址..." oninput="updatePreview()">
     </div>
 
-    <div class="video-viewport">
-        <video id="mp4Preview" controls muted loop></video>
-        <iframe id="ytPreview" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+    <div id="previewImageField" class="field">
+        <label>預覽圖網址 (.jpg / .png)</label>
+        <input type="text" id="imgInput" placeholder="https://..." oninput="updatePreview()">
+    </div>
+
+    <div class="field">
+        <label>彈幕測試 (逗號分隔)</label>
+        <input type="text" id="danmakuInput" value="水喔, 𓃥 白六推薦, 質感好棒, 666">
+    </div>
+
+    <div class="preview-container">
+        <video id="mp4View" controls muted loop playsinline></video>
+        <iframe id="ytView" allow="autoplay; encrypted-media"></iframe>
         <div id="danmakuLayer"></div>
     </div>
 
-    <button class="btn-send" onclick="sendToLine()">發送至 LINE</button>
+    <button class="btn-send" onclick="doSend()">發送至聊天室</button>
+    <p id="status" class="status-msg">正在初始化 LIFF...</p>
 </div>
 
 <script>
-    let currentMode = 'mp4';
-    let danmakuTimer = null;
+    let mode = 'mp4';
+    const LIFF_ID = "2009222789-ouCqL9JS";
 
-    // 切換模式
-    function switchMode(mode) {
-        currentMode = mode;
-        const tabMp4 = document.getElementById('tabMp4');
-        const tabYt = document.getElementById('tabYt');
-        const pInput = document.getElementById('previewInput');
-        const pLabel = document.getElementById('previewLabel');
-
-        if(mode === 'mp4') {
-            tabMp4.className = 'tab active';
-            tabYt.className = 'tab';
-            document.getElementById('urlLabel').innerText = "影片網址 (Direct MP4 URL)";
-            pInput.style.display = 'block';
-            pLabel.style.display = 'block';
-        } else {
-            tabMp4.className = 'tab';
-            tabYt.className = 'tab yt-active';
-            document.getElementById('urlLabel').innerText = "YouTube 影片 ID (例如: J3iO2PYEEnw)";
-            pInput.style.display = 'none';
-            pLabel.style.display = 'none';
-        }
-        syncPreview();
-    }
-
-    // 同步預覽畫面
-    function syncPreview() {
-        const val = document.getElementById('mainInput').value;
-        const mp4 = document.getElementById('mp4Preview');
-        const yt = document.getElementById('ytPreview');
-
-        if(currentMode === 'mp4') {
-            yt.style.display = 'none';
-            mp4.style.display = 'block';
-            if(val.endsWith('.mp4')) {
-                mp4.src = val;
-                mp4.play().catch(()=>{});
+    async function init() {
+        try {
+            await liff.init({ liffId: LIFF_ID });
+            if (liff.isLoggedIn()) {
+                document.getElementById('status').innerText = "LIFF 已就緒 (已登入)";
+            } else {
+                liff.login();
             }
-        } else {
-            mp4.style.display = 'none';
-            yt.style.display = 'block';
-            if(val.length > 5) {
-                yt.src = `https://www.youtube.com/embed/${val}?autoplay=1&mute=1&enablejsapi=1`;
-            }
+        } catch (e) {
+            document.getElementById('status').innerText = "初始化失敗: " + e.message;
         }
     }
 
-    // 彈幕動畫
-    function spawnDanmaku() {
-        const texts = document.getElementById('commentInput').value.split(',');
+    function setMode(newMode) {
+        mode = newMode;
+        document.getElementById('tabMp4').className = mode === 'mp4' ? 'tab active-mp4' : 'tab';
+        document.getElementById('tabYt').className = mode === 'yt' ? 'tab active-yt' : 'tab';
+        document.getElementById('previewImageField').style.display = mode === 'mp4' ? 'block' : 'none';
+        document.getElementById('inputLabel').innerText = mode === 'mp4' ? "影片網址 (.mp4)" : "YouTube 影片 ID";
+        updatePreview();
+    }
+
+    function updatePreview() {
+        const val = document.getElementById('urlInput').value.trim();
+        const vMp4 = document.getElementById('mp4View');
+        const vYt = document.getElementById('ytView');
+
+        if (mode === 'mp4') {
+            vYt.style.display = 'none'; vMp4.style.display = 'block';
+            if (val.toLowerCase().includes('.mp4')) { vMp4.src = val; vMp4.play().catch(()=>{}); }
+        } else {
+            vMp4.style.display = 'none'; vYt.style.display = 'block';
+            if (val.length >= 10) { vYt.src = `https://www.youtube.com/embed/${val}?autoplay=1&mute=1`; }
+        }
+    }
+
+    // 彈幕動畫邏輯
+    function createDanmaku() {
+        const input = document.getElementById('danmakuInput').value;
+        const texts = input.split(',');
         const layer = document.getElementById('danmakuLayer');
-        const div = document.createElement('div');
-        div.className = 'danmaku-item';
-        div.innerText = texts[Math.floor(Math.random() * texts.length)].trim();
-        div.style.top = Math.random() * 80 + '%';
-        div.style.left = '100%';
-        layer.appendChild(div);
+        const el = document.createElement('div');
+        el.className = 'danmaku';
+        el.innerText = texts[Math.floor(Math.random() * texts.length)].trim();
+        el.style.top = Math.random() * 80 + '%';
+        el.style.left = '100%';
+        layer.appendChild(el);
 
-        setTimeout(() => {
-            div.style.transform = `translateX(-${window.innerWidth + 500}px)`;
-        }, 50);
-        setTimeout(() => div.remove(), 4500);
+        const anim = el.animate([
+            { transform: 'translateX(0)' },
+            { transform: `translateX(-${layer.offsetWidth + 500}px)` }
+        ], { duration: 4000, easing: 'linear' });
+
+        anim.onfinish = () => el.remove();
     }
+    setInterval(createDanmaku, 2000);
 
-    function restartDanmaku() {
-        clearInterval(danmakuTimer);
-        danmakuTimer = setInterval(spawnDanmaku, 1500);
-    }
-
-    // 發送邏輯
-    async function sendToLine() {
-        const val = document.getElementById('mainInput').value;
-        const pUrl = document.getElementById('previewInput').value;
+    async function doSend() {
+        const url = document.getElementById('urlInput').value.trim();
+        const img = document.getElementById('imgInput').value.trim();
 
         if (!liff.isInClient()) {
-            alert("請在 LINE 內執行發送功能"); return;
+            alert("請在 LINE 手機版內打開此頁面才可發送訊息");
+            return;
         }
 
-        let msg = {};
-        if(currentMode === 'mp4') {
-            msg = { type: "video", originalContentUrl: val, previewImageUrl: pUrl || 'https://via.placeholder.com/800' };
+        let msg = [];
+        if (mode === 'mp4') {
+            if (!url || !img) { alert("請填寫 MP4 網址與預覽圖網址"); return; }
+            msg = [{ type: "video", originalContentUrl: url, previewImageUrl: img }];
         } else {
-            // YouTube 模式：發送一個帶有 LIFF 連結的 Flex Message
-            msg = {
+            if (!url) { alert("請填寫 YouTube ID"); return; }
+            msg = [{
                 type: "flex",
-                altText: "有人分享了 YouTube 影片給你",
+                altText: "🎥 分享了影片給你",
                 contents: {
                     "type": "bubble",
-                    "hero": { "type": "image", "url": `https://img.youtube.com/vi/${val}/mqdefault.jpg`, "size": "full", "aspectRatio": "16:9", "action": { "type": "uri", "uri": `https://liff.line.me/${liff.id}?v=${val}` } },
-                    "footer": { "type": "box", "layout": "vertical", "contents": [{ "type": "button", "action": { "type": "uri", "label": "點我播放影片", "uri": `https://liff.line.me/${liff.id}?v=${val}` }, "style": "primary", "color": "#ff0000" }] }
+                    "hero": {
+                        "type": "image", "url": `https://img.youtube.com/vi/${url}/maxresdefault.jpg`,
+                        "size": "full", "aspectRatio": "16:9", "aspectMode": "cover",
+                        "action": { "type": "uri", "uri": `https://liff.line.me/${LIFF_ID}?v=${url}` }
+                    },
+                    "footer": {
+                        "type": "box", "layout": "vertical", "contents": [
+                            { "type": "button", "style": "primary", "color": "#ff0000", "action": { "type": "uri", "label": "開啟播放器", "uri": `https://liff.line.me/${LIFF_ID}?v=${url}` } }
+                        ]
+                    }
                 }
-            };
+            }];
         }
-        
-        await liff.sendMessages([msg]);
-        liff.closeWindow();
+
+        try {
+            await liff.sendMessages(msg);
+            liff.closeWindow();
+        } catch (err) {
+            // 精準抓蟲：這裡會跳出為什麼送不出去
+            alert("發送失敗！\n代碼: " + err.code + "\n訊息: " + err.message + "\n\n請確認 LINE Developers Console 的 Scopes 有勾選 chat_message.write");
+        }
     }
 
-    window.onload = async () => {
-        await liff.init({ liffId: "你的_LIFF_ID" });
-        restartDanmaku();
-    };
+    window.onload = init;
 </script>
 
 </body>
