@@ -7,30 +7,30 @@
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         :root { --line-green: #00b900; --yt-red: #ff0000; --bg: #f4f7f9; }
-        body { font-family: -apple-system, "Noto Sans TC", sans-serif; background: var(--bg); margin: 0; padding: 0; overflow-x: hidden; }
+        body { font-family: -apple-system, "Noto Sans TC", sans-serif; background: var(--bg); margin: 0; padding: 0; }
         
-        /* 編輯器介面 */
+        /* 編輯器 UI */
         #editorUI { padding: 20px; display: flex; flex-direction: column; align-items: center; }
         .card { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 450px; box-sizing: border-box; }
         
-        /* 播放器介面 */
+        /* 播放器 UI */
         #playerUI { display: none; width: 100vw; height: 100vh; background: #000; position: fixed; top: 0; left: 0; z-index: 1000; }
         .full-video { width: 100%; height: 100%; border: none; }
         #danmakuLayer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1010; overflow: hidden; }
-        .danmaku { position: absolute; color: white; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.9); white-space: nowrap; font-size: 24px; will-change: transform; }
+        .danmaku { position: absolute; font-weight: bold; white-space: nowrap; will-change: transform; }
 
-        h2 { color: var(--yt-red); text-align: center; margin: 0 0 20px 0; font-size: 22px; }
-        .field { margin-bottom: 18px; width: 100%; }
-        label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #444; }
-        input, textarea { width: 100%; padding: 12px; border: 1.5px solid #eee; border-radius: 10px; box-sizing: border-box; font-size: 14px; outline: none; transition: 0.3s; }
-        input:focus, textarea:focus { border-color: var(--yt-red); }
+        h2 { color: var(--yt-red); text-align: center; margin: 0 0 20px 0; }
+        .field { margin-bottom: 15px; width: 100%; }
+        .flex-row { display: flex; gap: 10px; margin-bottom: 15px; }
+        .flex-item { flex: 1; }
+        label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #666; }
+        input, textarea, select { width: 100%; padding: 10px; border: 1.5px solid #eee; border-radius: 10px; box-sizing: border-box; font-size: 14px; outline: none; }
         
         .preview-img-container { width: 100%; border-radius: 12px; overflow: hidden; margin-top: 10px; background: #eee; aspect-ratio: 16/9; display: none; }
         #ytThumb { width: 100%; height: 100%; object-fit: cover; }
 
-        .btn-send { width: 100%; padding: 16px; background: var(--yt-red); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; box-shadow: 0 4px 12px rgba(255,0,0,0.2); }
-        .btn-send:active { transform: scale(0.98); }
-        .status-msg { font-size: 11px; color: #bbb; text-align: center; margin-top: 15px; }
+        .btn-send { width: 100%; padding: 16px; background: var(--yt-red); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        hr { border: 0; border-top: 1px solid #eee; margin: 20px 0; }
     </style>
 </head>
 <body>
@@ -42,28 +42,51 @@
 
 <div id="editorUI">
     <div class="card">
-        <h2>🎥 影片分享製作 (含 Shorts)</h2>
+        <h2>🎥 影片彈幕製作</h2>
         
         <div class="field">
-            <label>1. 貼上 YouTube / Shorts 網址</label>
+            <label>YouTube / Shorts 網址</label>
             <input type="text" id="ytUrl" placeholder="貼上網址..." oninput="handleUrlChange()">
-            <div id="thumbContainer" class="preview-img-container">
-                <img id="ytThumb">
-            </div>
+            <div id="thumbContainer" class="preview-img-container"><img id="ytThumb"></div>
         </div>
 
         <div class="field">
-            <label>2. 按鈕文字</label>
+            <label>按鈕文字</label>
             <input type="text" id="btnLabel" value="播放影片">
         </div>
 
+        <hr>
+
         <div class="field">
-            <label>3. 彈幕內容 (以分號 ; 隔開)</label>
-            <textarea id="danmakuText" rows="3">太帥了！; 𓃥 白六推薦; 這是 Shorts 耶; 666666; 質感滿分; 🎥🎥🎥</textarea>
+            <label>彈幕內容 (以分號 ; 隔開)</label>
+            <textarea id="danmakuText" rows="2">太帥了！; 𓃥 白六推薦; 666666; 質感滿分</textarea>
         </div>
 
-        <button class="btn-send" onclick="sendFlex()">選擇好友並發送</button>
-        <p id="status" class="status-msg">LIFF 初始化中...</p>
+        <div class="flex-row">
+            <div class="flex-item">
+                <label>彈幕顏色</label>
+                <input type="color" id="dColor" value="#ffffff">
+            </div>
+            <div class="flex-item">
+                <label>字體大小</label>
+                <select id="dSize">
+                    <option value="18px">小</option>
+                    <option value="24px" selected>中</option>
+                    <option value="32px">大</option>
+                    <option value="40px">特大</option>
+                </select>
+            </div>
+            <div class="flex-item">
+                <label>陰影</label>
+                <select id="dShadow">
+                    <option value="2px 2px 4px rgba(0,0,0,0.8)">標準</option>
+                    <option value="0 0 8px rgba(0,0,0,1)">深沉</option>
+                    <option value="none">無</option>
+                </select>
+            </div>
+        </div>
+
+        <button class="btn-send" onclick="sendFlex()">選擇好友發送</button>
     </div>
 </div>
 
@@ -75,128 +98,110 @@
         try {
             await liff.init({ liffId: LIFF_ID });
             if (!liff.isLoggedIn()) { liff.login(); return; }
-            document.getElementById('status').innerText = "LIFF 已就緒";
 
             const params = new URLSearchParams(window.location.search);
-            const v = params.get('v');
-            const d = params.get('d'); 
-
-            if (v) {
-                startPlayer(v, d);
+            if (params.get('v')) {
+                // 播放模式：抓取所有樣式參數
+                startPlayer(
+                    params.get('v'), 
+                    params.get('d'), 
+                    params.get('c') || '#ffffff', 
+                    params.get('s') || '24px',
+                    params.get('sh') || '2px 2px 4px rgba(0,0,0,0.8)'
+                );
             } else {
                 document.getElementById('editorUI').style.display = 'flex';
             }
         } catch (e) { console.error(e); }
     }
 
-    // 更新網址解析邏輯，增加對 Shorts 的支援
     function handleUrlChange() {
         const url = document.getElementById('ytUrl').value.trim();
         let videoId = "";
-
         if (url.includes("shorts/")) {
-            // 處理 shorts 格式: https://youtube.com/shorts/ID
             videoId = url.split("shorts/")[1].split(/[?&]/)[0];
         } else {
-            // 處理一般格式: watch?v=ID 或 youtu.be/ID
-            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-            const match = url.match(regExp);
-            if (match && match[2].length == 11) {
-                videoId = match[2];
-            }
+            const match = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/);
+            if (match && match[2].length == 11) videoId = match[2];
         }
-
         if (videoId) {
             currentYtId = videoId;
-            const thumb = document.getElementById('ytThumb');
-            const container = document.getElementById('thumbContainer');
-            thumb.src = `https://img.youtube.com/vi/${currentYtId}/hqdefault.jpg`;
-            container.style.display = 'block';
+            document.getElementById('ytThumb').src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+            document.getElementById('thumbContainer').style.display = 'block';
         }
     }
 
-    function startPlayer(vId, dText) {
+    function startPlayer(vId, dText, color, size, shadow) {
         document.getElementById('editorUI').style.display = 'none';
         document.getElementById('playerUI').style.display = 'block';
-        // 不論是一般影片還是 Shorts，透過 embed 播放器都能正常呈現
-        document.getElementById('ytPlayer').src = `https://www.youtube.com/embed/${vId}?autoplay=1&mute=1&rel=0&showinfo=0`;
+        document.getElementById('ytPlayer').src = `https://www.youtube.com/embed/${vId}?autoplay=1&mute=1&rel=0`;
 
         if (dText) {
             const danmakus = decodeURIComponent(dText).split(';');
             setInterval(() => {
                 const text = danmakus[Math.floor(Math.random() * danmakus.length)];
-                if(text && text.trim()) createDanmaku(text);
-            }, 1500);
+                if(text && text.trim()) createDanmaku(text.trim(), color, size, shadow);
+            }, 1200);
         }
     }
 
-    function createDanmaku(text) {
+    function createDanmaku(text, color, size, shadow) {
         const layer = document.getElementById('danmakuLayer');
         const el = document.createElement('div');
         el.className = 'danmaku';
-        el.innerText = text.trim();
+        el.innerText = text;
+        el.style.color = color;
+        el.style.fontSize = size;
+        el.style.textShadow = shadow;
         el.style.top = (Math.random() * 80 + 5) + '%';
         el.style.left = '100%';
         layer.appendChild(el);
 
-        const duration = 5000 + Math.random() * 3000;
         const anim = el.animate([
             { transform: 'translateX(0)' },
             { transform: `translateX(-${window.innerWidth + 1200}px)` }
-        ], { duration: duration, easing: 'linear' });
+        ], { duration: 6000 + Math.random() * 2000, easing: 'linear' });
 
         anim.onfinish = () => el.remove();
     }
 
     async function sendFlex() {
-        if (!currentYtId) { alert("請貼上正確的 YouTube 或 Shorts 網址"); return; }
+        if (!currentYtId) { alert("請貼上影片網址"); return; }
         
         const btnText = document.getElementById('btnLabel').value || "播放影片";
         const dText = encodeURIComponent(document.getElementById('danmakuText').value);
-        const shareLink = `https://liff.line.me/${LIFF_ID}?v=${currentYtId}&d=${dText}`;
-        const thumbUrl = `https://img.youtube.com/vi/${currentYtId}/hqdefault.jpg`;
+        const dColor = encodeURIComponent(document.getElementById('dColor').value);
+        const dSize = document.getElementById('dSize').value;
+        const dShadow = encodeURIComponent(document.getElementById('dShadow').value);
+
+        // 將樣式參數全部塞入網址
+        const shareLink = `https://liff.line.me/${LIFF_ID}?v=${currentYtId}&d=${dText}&c=${dColor}&s=${dSize}&sh=${dShadow}`;
 
         const flexMsg = [{
             type: "flex",
-            altText: "🎥 分享影片給你",
+            altText: "🎥 專屬彈幕影片分享",
             contents: {
                 "type": "bubble",
                 "hero": {
                     "type": "image",
-                    "url": thumbUrl,
-                    "size": "full",
-                    "aspectRatio": "16:9",
-                    "aspectMode": "cover",
+                    "url": `https://img.youtube.com/vi/${currentYtId}/hqdefault.jpg`,
+                    "size": "full", "aspectRatio": "16:9", "aspectMode": "cover",
                     "action": { "type": "uri", "uri": shareLink }
                 },
                 "footer": {
-                    "type": "box",
-                    "layout": "vertical",
-                    "contents": [
-                        {
-                            "type": "button",
-                            "style": "primary",
-                            "color": "#ff0000",
-                            "height": "md",
-                            "action": {
-                                "type": "uri",
-                                "label": btnText,
-                                "uri": shareLink
-                            }
-                        }
+                    "type": "box", "layout": "vertical", "contents": [
+                        { "type": "button", "style": "primary", "color": "#ff0000", "height": "md", "action": { "type": "uri", "label": btnText, "uri": shareLink } }
                     ]
                 }
             }
         }];
 
         try {
-            const res = await liff.shareTargetPicker(flexMsg);
-            if (res) liff.closeWindow();
-        } catch (e) { alert("發送失敗: " + e.message); }
+            await liff.shareTargetPicker(flexMsg);
+            liff.closeWindow();
+        } catch (e) { alert("發送失敗"); }
     }
-
     window.onload = init;
 </script>
-
 </body>
 </html>
