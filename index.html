@@ -42,11 +42,11 @@
 
 <div id="editorUI">
     <div class="card">
-        <h2>🎥 影片分享製作</h2>
+        <h2>🎥 影片分享製作 (含 Shorts)</h2>
         
         <div class="field">
-            <label>1. 貼上 YouTube 網址</label>
-            <input type="text" id="ytUrl" placeholder="https://youtu.be/..." oninput="handleUrlChange()">
+            <label>1. 貼上 YouTube / Shorts 網址</label>
+            <input type="text" id="ytUrl" placeholder="貼上網址..." oninput="handleUrlChange()">
             <div id="thumbContainer" class="preview-img-container">
                 <img id="ytThumb">
             </div>
@@ -54,12 +54,12 @@
 
         <div class="field">
             <label>2. 按鈕文字</label>
-            <input type="text" id="btnLabel" value="播放影片" placeholder="例如：點我播放">
+            <input type="text" id="btnLabel" value="播放影片">
         </div>
 
         <div class="field">
             <label>3. 彈幕內容 (以分號 ; 隔開)</label>
-            <textarea id="danmakuText" rows="3">太好聽了！; 𓃥 白六推薦; 666666; 質感滿分; 🎥🎥🎥; 這畫面太美</textarea>
+            <textarea id="danmakuText" rows="3">太帥了！; 𓃥 白六推薦; 這是 Shorts 耶; 666666; 質感滿分; 🎥🎥🎥</textarea>
         </div>
 
         <button class="btn-send" onclick="sendFlex()">選擇好友並發送</button>
@@ -89,15 +89,27 @@
         } catch (e) { console.error(e); }
     }
 
+    // 更新網址解析邏輯，增加對 Shorts 的支援
     function handleUrlChange() {
-        const url = document.getElementById('ytUrl').value;
-        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-        const match = url.match(regExp);
-        if (match && match[2].length == 11) {
-            currentYtId = match[2];
+        const url = document.getElementById('ytUrl').value.trim();
+        let videoId = "";
+
+        if (url.includes("shorts/")) {
+            // 處理 shorts 格式: https://youtube.com/shorts/ID
+            videoId = url.split("shorts/")[1].split(/[?&]/)[0];
+        } else {
+            // 處理一般格式: watch?v=ID 或 youtu.be/ID
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+            const match = url.match(regExp);
+            if (match && match[2].length == 11) {
+                videoId = match[2];
+            }
+        }
+
+        if (videoId) {
+            currentYtId = videoId;
             const thumb = document.getElementById('ytThumb');
             const container = document.getElementById('thumbContainer');
-            // 使用 hqdefault 確保穩定顯示
             thumb.src = `https://img.youtube.com/vi/${currentYtId}/hqdefault.jpg`;
             container.style.display = 'block';
         }
@@ -106,14 +118,14 @@
     function startPlayer(vId, dText) {
         document.getElementById('editorUI').style.display = 'none';
         document.getElementById('playerUI').style.display = 'block';
-        // 必須加上 mute=1 才能自動播放
+        // 不論是一般影片還是 Shorts，透過 embed 播放器都能正常呈現
         document.getElementById('ytPlayer').src = `https://www.youtube.com/embed/${vId}?autoplay=1&mute=1&rel=0&showinfo=0`;
 
         if (dText) {
             const danmakus = decodeURIComponent(dText).split(';');
             setInterval(() => {
                 const text = danmakus[Math.floor(Math.random() * danmakus.length)];
-                if(text.trim()) createDanmaku(text);
+                if(text && text.trim()) createDanmaku(text);
             }, 1500);
         }
     }
@@ -123,21 +135,21 @@
         const el = document.createElement('div');
         el.className = 'danmaku';
         el.innerText = text.trim();
-        el.style.top = (Math.random() * 75 + 5) + '%';
+        el.style.top = (Math.random() * 80 + 5) + '%';
         el.style.left = '100%';
         layer.appendChild(el);
 
         const duration = 5000 + Math.random() * 3000;
         const anim = el.animate([
             { transform: 'translateX(0)' },
-            { transform: `translateX(-${window.innerWidth + 1000}px)` }
+            { transform: `translateX(-${window.innerWidth + 1200}px)` }
         ], { duration: duration, easing: 'linear' });
 
         anim.onfinish = () => el.remove();
     }
 
     async function sendFlex() {
-        if (!currentYtId) { alert("請先輸入有效的 YouTube 網址並確認出現預覽圖"); return; }
+        if (!currentYtId) { alert("請貼上正確的 YouTube 或 Shorts 網址"); return; }
         
         const btnText = document.getElementById('btnLabel').value || "播放影片";
         const dText = encodeURIComponent(document.getElementById('danmakuText').value);
@@ -180,7 +192,7 @@
         try {
             const res = await liff.shareTargetPicker(flexMsg);
             if (res) liff.closeWindow();
-        } catch (e) { alert("分享失敗，請檢查權限: " + e.message); }
+        } catch (e) { alert("發送失敗: " + e.message); }
     }
 
     window.onload = init;
