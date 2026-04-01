@@ -3,95 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>白六 YouTube 分享器</title>
+    <title>白六 YouTube 彈幕分享器</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-        :root { --line-green: #00b900; --yt-red: #ff0000; --bg: #f8f9fa; }
+        :root { --line-green: #00b900; --yt-red: #ff0000; --bg: #f0f2f5; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 0; }
         
-        /* 編輯器介面 */
+        /* 編輯器 UI */
         #editorUI { padding: 20px; display: flex; flex-direction: column; align-items: center; }
         .card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 450px; box-sizing: border-box; }
         
-        /* 播放器介面 */
-        #playerUI { display: none; width: 100vw; height: 100vh; background: #000; position: fixed; top: 0; left: 0; z-index: 1000; }
+        /* 播放器 UI */
+        #playerUI { display: none; width: 100vw; height: 100vh; background: #000; position: fixed; top: 0; left: 0; z-index: 1000; overflow: hidden; }
         .full-video { width: 100%; height: 100%; border: none; }
+        #danmakuLayer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1010; }
+        .danmaku { position: absolute; color: white; font-weight: bold; text-shadow: 2px 2px 4px #000; white-space: nowrap; font-size: 22px; will-change: transform; }
 
         h2 { color: var(--yt-red); text-align: center; margin-top: 0; }
         .field { margin-bottom: 15px; }
         label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #555; }
-        input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; margin-bottom: 5px; }
+        input, select, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
         
-        .style-row { display: flex; gap: 10px; }
-        .style-row > div { flex: 1; }
-
-        .preview-box { 
-            background: #eee; border-radius: 12px; padding: 15px; margin: 15px 0; text-align: center;
-            min-height: 50px; display: flex; align-items: center; justify-content: center;
-        }
-
         .btn-send { width: 100%; padding: 16px; background: var(--yt-red); color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .preview-img { width: 100%; border-radius: 10px; margin-top: 10px; display: none; aspect-ratio: 16/9; object-fit: cover; }
     </style>
 </head>
 <body>
 
 <div id="playerUI">
-    <iframe id="ytPlayer" class="full-video" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+    <iframe id="ytPlayer" class="full-video" allow="autoplay; encrypted-media"></iframe>
+    <div id="danmakuLayer"></div>
 </div>
 
 <div id="editorUI">
     <div class="card">
-        <h2>🎥 YouTube 分享編輯器</h2>
+        <h2>🎥 彈幕影片製作</h2>
         
         <div class="field">
-            <label>YouTube 分享網址</label>
-            <input type="text" id="ytUrl" placeholder="貼上 https://youtu.be/..." oninput="parseYoutube()">
+            <label>YouTube 網址</label>
+            <input type="text" id="ytUrl" placeholder="貼上網址..." oninput="handleUrlChange()">
+            <img id="ytThumb" class="preview-img">
         </div>
-
-        <hr>
 
         <div class="field">
-            <label>自訂訊息文字</label>
-            <input type="text" id="msgText" value="這影片超讚！" oninput="updateTextPreview()">
+            <label>按鈕文字</label>
+            <input type="text" id="btnLabel" value="播放影片">
         </div>
 
-        <div class="style-row">
-            <div class="field">
-                <label>顏色</label>
-                <input type="color" id="msgColor" value="#ff0000" oninput="updateTextPreview()">
-            </div>
-            <div class="field">
-                <label>字體大小</label>
-                <select id="msgSize" onchange="updateTextPreview()">
-                    <option value="sm">小</option>
-                    <option value="md" selected>中</option>
-                    <option value="lg">大</option>
-                    <option value="xl">特大</option>
-                </select>
-            </div>
+        <div class="field">
+            <label>彈幕內容 (以分號 ; 隔開)</label>
+            <textarea id="danmakuText" rows="3">太好聽了！; 𓃥 白六推薦; 666666; 質感滿分; 🎥🎥🎥</textarea>
         </div>
 
-        <div class="style-row">
-            <div class="field">
-                <label>粗體</label>
-                <select id="msgWeight" onchange="updateTextPreview()">
-                    <option value="regular">一般</option>
-                    <option value="bold" selected>粗體</option>
-                </select>
-            </div>
-            <div class="field">
-                <label>對齊</label>
-                <select id="msgAlign" onchange="updateTextPreview()">
-                    <option value="start">左對齊</option>
-                    <option value="center" selected>居中</option>
-                </select>
-            </div>
-        </div>
-
-        <label>文字預覽：</label>
-        <div class="preview-box" id="textPreview">這影片超讚！</div>
-
-        <button class="btn-send" onclick="sendYoutube()">選擇好友分享</button>
+        <button class="btn-send" onclick="sendFlex()">選擇好友並發送</button>
     </div>
 </div>
 
@@ -104,94 +68,104 @@
             await liff.init({ liffId: LIFF_ID });
             if (!liff.isLoggedIn()) { liff.login(); return; }
 
-            const urlParams = new URLSearchParams(window.location.search);
-            const v = urlParams.get('v');
+            const params = new URLSearchParams(window.location.search);
+            const v = params.get('v');
+            const d = params.get('d'); // 取得加密或編碼後的彈幕
 
             if (v) {
-                // 播放模式
-                document.getElementById('editorUI').style.display = 'none';
-                document.getElementById('playerUI').style.display = 'block';
-                // 注意：必須加上 mute=1 才能在許多手機瀏覽器自動播放
-                document.getElementById('ytPlayer').src = `https://www.youtube.com/embed/${v}?autoplay=1&mute=1&rel=0&showinfo=0`;
+                startPlayer(v, d);
             } else {
-                // 編輯模式
                 document.getElementById('editorUI').style.display = 'flex';
-                updateTextPreview();
             }
         } catch (e) { console.error(e); }
     }
 
-    function parseYoutube() {
+    function handleUrlChange() {
         const url = document.getElementById('ytUrl').value;
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
         const match = url.match(regExp);
         if (match && match[2].length == 11) {
             currentYtId = match[2];
+            const thumb = document.getElementById('ytThumb');
+            thumb.src = `https://img.youtube.com/vi/${currentYtId}/maxresdefault.jpg`;
+            thumb.style.display = 'block';
         }
     }
 
-    function updateTextPreview() {
-        const preview = document.getElementById('textPreview');
-        const text = document.getElementById('msgText').value;
-        const color = document.getElementById('msgColor').value;
-        const sizeMap = { sm: '14px', md: '18px', lg: '24px', xl: '32px' };
-        
-        preview.innerText = text;
-        preview.style.color = color;
-        preview.style.fontSize = sizeMap[document.getElementById('msgSize').value];
-        preview.style.fontWeight = document.getElementById('msgWeight').value === 'bold' ? 'bold' : 'normal';
-        preview.style.justifyContent = document.getElementById('msgAlign').value === 'center' ? 'center' : 'flex-start';
+    function startPlayer(vId, dText) {
+        document.getElementById('editorUI').style.display = 'none';
+        document.getElementById('playerUI').style.display = 'block';
+        document.getElementById('ytPlayer').src = `https://www.youtube.com/embed/${vId}?autoplay=1&mute=1&rel=0`;
+
+        if (dText) {
+            const danmakus = decodeURIComponent(dText).split(';');
+            setInterval(() => {
+                const text = danmakus[Math.floor(Math.random() * danmakus.length)];
+                createDanmaku(text);
+            }, 1500);
+        }
     }
 
-    async function sendYoutube() {
-        if (!currentYtId) { alert("請輸入正確的 YouTube 網址"); return; }
-        
-        const text = document.getElementById('msgText').value;
-        const color = document.getElementById('msgColor').value;
-        const weight = document.getElementById('msgWeight').value;
-        const align = document.getElementById('msgAlign').value;
-        const size = document.getElementById('msgSize').value;
+    function createDanmaku(text) {
+        const layer = document.getElementById('danmakuLayer');
+        const el = document.createElement('div');
+        el.className = 'danmaku';
+        el.innerText = text.trim();
+        el.style.top = (Math.random() * 80 + 5) + '%';
+        el.style.left = '100%';
+        layer.appendChild(el);
 
-        const shareLink = `https://liff.line.me/${LIFF_ID}?v=${currentYtId}`;
+        const anim = el.animate([
+            { transform: 'translateX(0)' },
+            { transform: `translateX(-${window.innerWidth + 800}px)` }
+        ], { duration: 5000 + Math.random() * 2000, easing: 'linear' });
+
+        anim.onfinish = () => el.remove();
+    }
+
+    async function sendFlex() {
+        if (!currentYtId) { alert("請輸入有效的網址"); return; }
+        
+        const btnText = document.getElementById('btnLabel').value || "播放影片";
+        const dText = encodeURIComponent(document.getElementById('danmakuText').value);
+        const shareLink = `https://liff.line.me/${LIFF_ID}?v=${currentYtId}&d=${dText}`;
 
         const flexMsg = [{
             type: "flex",
-            altText: "🎥 分享影片：" + text,
+            altText: "🎥 分享影片給你",
             contents: {
                 "type": "bubble",
                 "hero": {
                     "type": "image",
                     "url": `https://img.youtube.com/vi/${currentYtId}/maxresdefault.jpg`,
-                    "size": "full", "aspectRatio": "16:9", "aspectMode": "cover",
+                    "size": "full",
+                    "aspectRatio": "16:9",
+                    "aspectMode": "cover",
                     "action": { "type": "uri", "uri": shareLink }
                 },
-                "body": {
+                "footer": {
                     "type": "box",
                     "layout": "vertical",
                     "contents": [
                         {
-                            "type": "text",
-                            "text": text,
-                            "weight": weight,
-                            "size": size,
-                            "color": color,
-                            "align": align,
-                            "wrap": true
+                            "type": "button",
+                            "style": "primary",
+                            "color": "#ff0000",
+                            "height": "md",
+                            "action": {
+                                "type": "uri",
+                                "label": btnText,
+                                "uri": shareLink
+                            }
                         }
-                    ],
-                    "action": { "type": "uri", "uri": shareLink }
-                },
-                "footer": {
-                    "type": "box", "layout": "vertical", "contents": [
-                        { "type": "button", "style": "primary", "color": "#ff0000", "height": "sm", "action": { "type": "uri", "label": "點我播放影片", "uri": shareLink } }
                     ]
                 }
             }
         }];
 
         try {
-            await liff.shareTargetPicker(flexMsg);
-            liff.closeWindow();
+            const res = await liff.shareTargetPicker(flexMsg);
+            if (res) liff.closeWindow();
         } catch (e) { alert("發送失敗: " + e.message); }
     }
 
