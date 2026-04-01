@@ -3,73 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>白六影片分享器</title>
+    <title>白六影片播放器</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         :root { --line-green: #00b900; --yt-red: #ff0000; --bg: #f4f7f9; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 15px; display: flex; justify-content: center; }
-        .card { background: white; border-radius: 20px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
-        h2 { color: var(--line-green); text-align: center; margin: 0 0 20px 0; font-size: 20px; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 0; overflow-x: hidden; }
         
-        /* 模式切換 */
+        /* 編輯器容器 */
+        #editorUI { padding: 15px; display: none; justify-content: center; flex-direction: column; align-items: center; }
+        .card { background: white; border-radius: 20px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 400px; box-sizing: border-box; }
+        
+        /* 播放器模式容器 (全螢幕) */
+        #playerUI { display: none; width: 100vw; height: 100vh; background: #000; position: fixed; top: 0; left: 0; z-index: 999; }
+        .full-video { width: 100%; height: 100%; border: none; }
+
+        /* 原有樣式保持 */
+        h2 { color: var(--line-green); text-align: center; margin: 0 0 20px 0; font-size: 20px; }
         .tab-group { display: flex; background: #eee; border-radius: 10px; padding: 4px; margin-bottom: 20px; }
-        .tab { flex: 1; padding: 10px; text-align: center; cursor: pointer; border-radius: 8px; font-size: 14px; color: #666; transition: 0.3s; }
+        .tab { flex: 1; padding: 10px; text-align: center; cursor: pointer; border-radius: 8px; font-size: 14px; color: #666; }
         .tab.active-mp4 { background: var(--line-green); color: white; font-weight: bold; }
         .tab.active-yt { background: var(--yt-red); color: white; font-weight: bold; }
-
-        .field { margin-bottom: 15px; }
+        .field { margin-bottom: 15px; width: 100%; }
         label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #444; }
-        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; outline: none; }
-        input:focus { border-color: var(--line-green); }
-        
-        /* 預覽視窗 */
-        .preview-container { 
-            position: relative; width: 100%; aspect-ratio: 16/9; 
-            background: #000; border-radius: 12px; margin: 15px 0; overflow: hidden; 
-        }
+        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
+        .preview-container { position: relative; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; margin: 15px 0; overflow: hidden; }
         #mp4View, #ytView { width: 100%; height: 100%; display: none; border: none; }
         #danmakuLayer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
         .danmaku { position: absolute; color: white; font-weight: bold; text-shadow: 1px 1px 3px #000; white-space: nowrap; font-size: 18px; }
-
-        /* 分享按鈕 */
-        .btn-send { width: 100%; padding: 16px; background: var(--line-green); color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .btn-send:active { transform: scale(0.98); opacity: 0.9; }
-        .status-msg { font-size: 12px; color: #999; text-align: center; margin-top: 10px; }
+        .btn-send { width: 100%; padding: 16px; background: var(--line-green); color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <h2>𓃥 影片分享編輯器</h2>
+<div id="playerUI">
+    <iframe id="mainYTPlayer" class="full-video" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+    <video id="mainMP4Player" class="full-video" controls autoplay playsinline style="display:none;"></video>
+    <div id="playerDanmaku" style="position: absolute; top: 0; width: 100%; height: 100%; pointer-events: none;"></div>
+</div>
 
-    <div class="tab-group">
-        <div id="tabMp4" class="tab active-mp4" onclick="setMode('mp4')">MP4 直連</div>
-        <div id="tabYt" class="tab" onclick="setMode('yt')">YouTube</div>
+<div id="editorUI">
+    <div class="card">
+        <h2>𓃥 影片分享編輯器</h2>
+        <div class="tab-group">
+            <div id="tabMp4" class="tab active-mp4" onclick="setMode('mp4')">MP4 直連</div>
+            <div id="tabYt" class="tab" onclick="setMode('yt')">YouTube</div>
+        </div>
+        <div class="field">
+            <label id="inputLabel">影片網址 (.mp4)</label>
+            <input type="text" id="urlInput" placeholder="輸入網址或 ID..." oninput="updatePreview()">
+        </div>
+        <div id="previewImageField" class="field">
+            <label>預覽圖網址</label>
+            <input type="text" id="imgInput" placeholder="https://..." oninput="updatePreview()">
+        </div>
+        <div class="preview-container">
+            <video id="mp4View" controls muted loop playsinline></video>
+            <iframe id="ytView" allow="autoplay; encrypted-media"></iframe>
+            <div id="danmakuLayer"></div>
+        </div>
+        <button class="btn-send" onclick="doShare()">選擇好友並發送</button>
     </div>
-
-    <div class="field">
-        <label id="inputLabel">影片網址 (.mp4)</label>
-        <input type="text" id="urlInput" placeholder="請輸入網址..." oninput="updatePreview()">
-    </div>
-
-    <div id="previewImageField" class="field">
-        <label>預覽圖網址 (.jpg / .png)</label>
-        <input type="text" id="imgInput" placeholder="https://..." oninput="updatePreview()">
-    </div>
-
-    <div class="field">
-        <label>彈幕測試內容 (逗號分隔)</label>
-        <input type="text" id="danmakuInput" value="水喔, 𓃥 白六分享, 影片很有質感, 讚讚">
-    </div>
-
-    <div class="preview-container">
-        <video id="mp4View" controls muted loop playsinline></video>
-        <iframe id="ytView" allow="autoplay; encrypted-media"></iframe>
-        <div id="danmakuLayer"></div>
-    </div>
-
-    <button class="btn-send" onclick="doShare()">選擇好友並發送</button>
-    <p id="status" class="status-msg">初始化中...</p>
 </div>
 
 <script>
@@ -79,14 +72,37 @@
     async function init() {
         try {
             await liff.init({ liffId: LIFF_ID });
-            if (liff.isLoggedIn()) {
-                document.getElementById('status').innerText = "LIFF 已就緒";
+            if (!liff.isLoggedIn()) { liff.login(); return; }
+
+            // 判斷網址是否有影片參數
+            const urlParams = new URLSearchParams(window.location.search);
+            const ytId = urlParams.get('v');
+            const mp4Url = urlParams.get('mp4');
+
+            if (ytId) {
+                showPlayer('yt', ytId);
+            } else if (mp4Url) {
+                showPlayer('mp4', mp4Url);
             } else {
-                liff.login();
+                document.getElementById('editorUI').style.display = 'flex';
+                updatePreview();
             }
-        } catch (e) {
-            document.getElementById('status').innerText = "初始化失敗: " + e.message;
+        } catch (e) { console.error(e); }
+    }
+
+    function showPlayer(type, source) {
+        document.getElementById('playerUI').style.display = 'block';
+        if (type === 'yt') {
+            const p = document.getElementById('mainYTPlayer');
+            p.style.display = 'block';
+            p.src = `https://www.youtube.com/embed/${source}?autoplay=1&rel=0`;
+        } else {
+            const p = document.getElementById('mainMP4Player');
+            p.style.display = 'block';
+            p.src = source;
         }
+        // 播放模式也開啟彈幕
+        setInterval(() => createDanmaku('playerDanmaku'), 1500);
     }
 
     function setMode(newMode) {
@@ -94,7 +110,6 @@
         document.getElementById('tabMp4').className = mode === 'mp4' ? 'tab active-mp4' : 'tab';
         document.getElementById('tabYt').className = mode === 'yt' ? 'tab active-yt' : 'tab';
         document.getElementById('previewImageField').style.display = mode === 'mp4' ? 'block' : 'none';
-        document.getElementById('inputLabel').innerText = mode === 'mp4' ? "影片網址 (.mp4)" : "YouTube 影片 ID";
         updatePreview();
     }
 
@@ -102,81 +117,63 @@
         const val = document.getElementById('urlInput').value.trim();
         const vMp4 = document.getElementById('mp4View');
         const vYt = document.getElementById('ytView');
-
         if (mode === 'mp4') {
             vYt.style.display = 'none'; vMp4.style.display = 'block';
-            if (val.toLowerCase().includes('.mp4')) { vMp4.src = val; vMp4.play().catch(()=>{}); }
+            if (val.includes('.mp4')) { vMp4.src = val; vMp4.play().catch(()=>{}); }
         } else {
             vMp4.style.display = 'none'; vYt.style.display = 'block';
             if (val.length >= 10) { vYt.src = `https://www.youtube.com/embed/${val}?autoplay=1&mute=1`; }
         }
     }
 
-    // 彈幕效果
-    function createDanmaku() {
-        const input = document.getElementById('danmakuInput').value;
-        const texts = input.split(',');
-        const layer = document.getElementById('danmakuLayer');
+    function createDanmaku(layerId = 'danmakuLayer') {
+        const texts = ["水喔", "𓃥 白六分享", "質感好棒", "讚讚", "🎥🎥🎥"];
+        const layer = document.getElementById(layerId);
+        if(!layer) return;
         const el = document.createElement('div');
         el.className = 'danmaku';
-        el.innerText = texts[Math.floor(Math.random() * texts.length)].trim();
-        el.style.top = (Math.random() * 80) + '%';
+        el.innerText = texts[Math.floor(Math.random() * texts.length)];
+        el.style.top = Math.random() * 80 + '%';
         el.style.left = '100%';
         layer.appendChild(el);
-
-        const anim = el.animate([
-            { transform: 'translateX(0)' },
-            { transform: `translateX(-${layer.offsetWidth + 500}px)` }
-        ], { duration: 4000, easing: 'linear' });
-
+        const anim = el.animate([{ transform: 'translateX(0)' }, { transform: `translateX(-${window.innerWidth + 500}px)` }], { duration: 4000 });
         anim.onfinish = () => el.remove();
     }
-    setInterval(createDanmaku, 2000);
+    setInterval(() => { if(document.getElementById('editorUI').style.display !== 'none') createDanmaku('danmakuLayer'); }, 2000);
 
     async function doShare() {
-        const url = document.getElementById('urlInput').value.trim();
+        const val = document.getElementById('urlInput').value.trim();
         const img = document.getElementById('imgInput').value.trim();
+        if (!val) return;
 
-        // 檢查是否支援分享選單
-        if (!liff.isApiAvailable('shareTargetPicker')) {
-            alert("目前環境不支援選擇聯絡人，請確認 LIFF 後台已開啟 shareTargetPicker 權限並在 LINE App 內開啟。");
-            return;
-        }
+        // 建立分享網址：將影片 ID 或 MP4 網址帶在參數裡
+        const shareLink = mode === 'yt' 
+            ? `https://liff.line.me/${LIFF_ID}?v=${val}`
+            : `https://liff.line.me/${LIFF_ID}?mp4=${encodeURIComponent(val)}`;
 
-        let msg = [];
-        if (mode === 'mp4') {
-            if (!url || !img) { alert("請填寫 MP4 與預覽圖網址"); return; }
-            msg = [{ type: "video", originalContentUrl: url, previewImageUrl: img }];
-        } else {
-            if (!url) { alert("請填寫 YouTube ID"); return; }
-            msg = [{
-                type: "flex",
-                altText: "🎥 分享了影片給你",
-                contents: {
-                    "type": "bubble",
-                    "hero": {
-                        "type": "image", "url": `https://img.youtube.com/vi/${url}/maxresdefault.jpg`,
-                        "size": "full", "aspectRatio": "16:9", "aspectMode": "cover",
-                        "action": { "type": "uri", "uri": `https://liff.line.me/${LIFF_ID}?v=${url}` }
-                    },
-                    "footer": {
-                        "type": "box", "layout": "vertical", "contents": [
-                            { "type": "button", "style": "primary", "color": "#ff0000", "action": { "type": "uri", "label": "播放影片", "uri": `https://liff.line.me/${LIFF_ID}?v=${url}` } }
-                        ]
-                    }
+        const msg = [{
+            type: "flex",
+            altText: "🎥 有人分享了影片給你",
+            contents: {
+                "type": "bubble",
+                "hero": {
+                    "type": "image",
+                    "url": mode === 'yt' ? `https://img.youtube.com/vi/${val}/maxresdefault.jpg` : (img || "https://via.placeholder.com/800x450"),
+                    "size": "full", "aspectRatio": "16:9", "aspectMode": "cover",
+                    "action": { "type": "uri", "uri": shareLink }
+                },
+                "footer": {
+                    "type": "box", "layout": "vertical", "contents": [
+                        { "type": "button", "style": "primary", "color": "#ff0000", "action": { "type": "uri", "label": "播放影片", "uri": shareLink } }
+                    ]
                 }
-            }];
-        }
+            }
+        }];
 
         try {
-            // 呼叫好友選擇選單
-            const res = await liff.shareTargetPicker(msg);
-            if (res) {
-                liff.closeWindow();
-            }
-        } catch (err) {
-            alert("分享失敗！\n代碼: " + err.code + "\n訊息: " + err.message);
-        }
+            await liff.shareTargetPicker(msg);
+            liff.closeWindow();
+        } catch (err) { alert(err.message); }
     }
 
     window.onload = init;
