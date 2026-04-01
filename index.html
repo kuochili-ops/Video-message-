@@ -80,7 +80,7 @@
                 <label>陰影</label>
                 <select id="dShadow">
                     <option value="2px 2px 4px rgba(0,0,0,0.8)">標準</option>
-                    <option value="0 0 8px rgba(0,0,0,1)">深沉</option>
+                    <option value="0 0 8px rgba(0,0,0,1)">深沈</option>
                     <option value="none">無</option>
                 </select>
             </div>
@@ -100,15 +100,27 @@
             if (!liff.isLoggedIn()) { liff.login(); return; }
 
             const params = new URLSearchParams(window.location.search);
-            if (params.get('v')) {
-                // 播放模式：抓取所有樣式參數
-                startPlayer(
-                    params.get('v'), 
-                    params.get('d'), 
-                    params.get('c') || '#ffffff', 
-                    params.get('s') || '24px',
-                    params.get('sh') || '2px 2px 4px rgba(0,0,0,0.8)'
-                );
+            const v = params.get('v');
+            const editMode = params.get('mode') === 'edit';
+
+            // 取得所有參數並填入編輯器（不論是播放還是轉發，都先解析參數）
+            if (v) {
+                currentYtId = v;
+                if (params.get('b')) document.getElementById('btnLabel').value = params.get('b');
+                if (params.get('d')) document.getElementById('danmakuText').value = decodeURIComponent(params.get('d'));
+                if (params.get('c')) document.getElementById('dColor').value = decodeURIComponent(params.get('c'));
+                if (params.get('s')) document.getElementById('dSize').value = params.get('s');
+                if (params.get('sh')) document.getElementById('dShadow').value = decodeURIComponent(params.get('sh'));
+                
+                // 如果是轉發模式或是純編輯模式
+                if (editMode || !v) {
+                    document.getElementById('ytUrl').value = `https://www.youtube.com/watch?v=${v}`;
+                    handleUrlChange();
+                    document.getElementById('editorUI').style.display = 'flex';
+                } else {
+                    // 播放模式
+                    startPlayer(v, params.get('d'), params.get('c'), params.get('s'), params.get('sh'));
+                }
             } else {
                 document.getElementById('editorUI').style.display = 'flex';
             }
@@ -137,10 +149,13 @@
         document.getElementById('ytPlayer').src = `https://www.youtube.com/embed/${vId}?autoplay=1&mute=1&rel=0`;
 
         if (dText) {
+            const colorVal = color ? decodeURIComponent(color) : '#ffffff';
+            const sizeVal = size || '24px';
+            const shadowVal = shadow ? decodeURIComponent(shadow) : '2px 2px 4px rgba(0,0,0,0.8)';
             const danmakus = decodeURIComponent(dText).split(';');
             setInterval(() => {
                 const text = danmakus[Math.floor(Math.random() * danmakus.length)];
-                if(text && text.trim()) createDanmaku(text.trim(), color, size, shadow);
+                if(text && text.trim()) createDanmaku(text.trim(), colorVal, sizeVal, shadowVal);
             }, 1200);
         }
     }
@@ -156,26 +171,24 @@
         el.style.top = (Math.random() * 80 + 5) + '%';
         el.style.left = '100%';
         layer.appendChild(el);
-
-        const anim = el.animate([
-            { transform: 'translateX(0)' },
-            { transform: `translateX(-${window.innerWidth + 1200}px)` }
-        ], { duration: 6000 + Math.random() * 2000, easing: 'linear' });
-
+        const anim = el.animate([{ transform: 'translateX(0)' }, { transform: `translateX(-${window.innerWidth + 1200}px)` }], { duration: 6000 + Math.random() * 2000, easing: 'linear' });
         anim.onfinish = () => el.remove();
     }
 
     async function sendFlex() {
         if (!currentYtId) { alert("請貼上影片網址"); return; }
         
-        const btnText = document.getElementById('btnLabel').value || "播放影片";
+        const btnLabel = document.getElementById('btnLabel').value || "播放影片";
         const dText = encodeURIComponent(document.getElementById('danmakuText').value);
         const dColor = encodeURIComponent(document.getElementById('dColor').value);
         const dSize = document.getElementById('dSize').value;
         const dShadow = encodeURIComponent(document.getElementById('dShadow').value);
 
-        // 將樣式參數全部塞入網址
-        const shareLink = `https://liff.line.me/${LIFF_ID}?v=${currentYtId}&d=${dText}&c=${dColor}&s=${dSize}&sh=${dShadow}`;
+        // 基本參數字串
+        const baseParams = `v=${currentYtId}&d=${dText}&c=${dColor}&s=${dSize}&sh=${dShadow}&b=${encodeURIComponent(btnLabel)}`;
+        
+        const playLink = `https://liff.line.me/${LIFF_ID}?${baseParams}`;
+        const shareLink = `https://liff.line.me/${LIFF_ID}?${baseParams}&mode=edit`;
 
         const flexMsg = [{
             type: "flex",
@@ -186,11 +199,18 @@
                     "type": "image",
                     "url": `https://img.youtube.com/vi/${currentYtId}/hqdefault.jpg`,
                     "size": "full", "aspectRatio": "16:9", "aspectMode": "cover",
-                    "action": { "type": "uri", "uri": shareLink }
+                    "action": { "type": "uri", "uri": playLink }
                 },
                 "footer": {
-                    "type": "box", "layout": "vertical", "contents": [
-                        { "type": "button", "style": "primary", "color": "#ff0000", "height": "md", "action": { "type": "uri", "label": btnText, "uri": shareLink } }
+                    "type": "box", "layout": "horizontal", "spacing": "md", "contents": [
+                        {
+                            "type": "button", "style": "primary", "color": "#ff0000", "height": "sm",
+                            "action": { "type": "uri", "label": btnLabel, "uri": playLink }
+                        },
+                        {
+                            "type": "button", "style": "secondary", "color": "#888888", "height": "sm",
+                            "action": { "type": "uri", "label": "轉發分享", "uri": shareLink }
+                        }
                     ]
                 }
             }
