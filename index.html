@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>白六影片傳送器</title>
+    <title>白六影片分享器</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         :root { --line-green: #00b900; --yt-red: #ff0000; --bg: #f4f7f9; }
@@ -11,6 +11,7 @@
         .card { background: white; border-radius: 20px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
         h2 { color: var(--line-green); text-align: center; margin: 0 0 20px 0; font-size: 20px; }
         
+        /* 模式切換 */
         .tab-group { display: flex; background: #eee; border-radius: 10px; padding: 4px; margin-bottom: 20px; }
         .tab { flex: 1; padding: 10px; text-align: center; cursor: pointer; border-radius: 8px; font-size: 14px; color: #666; transition: 0.3s; }
         .tab.active-mp4 { background: var(--line-green); color: white; font-weight: bold; }
@@ -18,8 +19,10 @@
 
         .field { margin-bottom: 15px; }
         label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #444; }
-        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
+        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; outline: none; }
+        input:focus { border-color: var(--line-green); }
         
+        /* 預覽視窗 */
         .preview-container { 
             position: relative; width: 100%; aspect-ratio: 16/9; 
             background: #000; border-radius: 12px; margin: 15px 0; overflow: hidden; 
@@ -28,7 +31,8 @@
         #danmakuLayer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
         .danmaku { position: absolute; color: white; font-weight: bold; text-shadow: 1px 1px 3px #000; white-space: nowrap; font-size: 18px; }
 
-        .btn-send { width: 100%; padding: 16px; background: var(--line-green); color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        /* 分享按鈕 */
+        .btn-send { width: 100%; padding: 16px; background: var(--line-green); color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .btn-send:active { transform: scale(0.98); opacity: 0.9; }
         .status-msg { font-size: 12px; color: #999; text-align: center; margin-top: 10px; }
     </style>
@@ -36,7 +40,7 @@
 <body>
 
 <div class="card">
-    <h2>𓃥 影片傳送編輯器</h2>
+    <h2>𓃥 影片分享編輯器</h2>
 
     <div class="tab-group">
         <div id="tabMp4" class="tab active-mp4" onclick="setMode('mp4')">MP4 直連</div>
@@ -45,7 +49,7 @@
 
     <div class="field">
         <label id="inputLabel">影片網址 (.mp4)</label>
-        <input type="text" id="urlInput" placeholder="輸入網址..." oninput="updatePreview()">
+        <input type="text" id="urlInput" placeholder="請輸入網址..." oninput="updatePreview()">
     </div>
 
     <div id="previewImageField" class="field">
@@ -54,8 +58,8 @@
     </div>
 
     <div class="field">
-        <label>彈幕測試 (逗號分隔)</label>
-        <input type="text" id="danmakuInput" value="水喔, 𓃥 白六推薦, 質感好棒, 666">
+        <label>彈幕測試內容 (逗號分隔)</label>
+        <input type="text" id="danmakuInput" value="水喔, 𓃥 白六分享, 影片很有質感, 讚讚">
     </div>
 
     <div class="preview-container">
@@ -64,8 +68,8 @@
         <div id="danmakuLayer"></div>
     </div>
 
-    <button class="btn-send" onclick="doSend()">發送至聊天室</button>
-    <p id="status" class="status-msg">正在初始化 LIFF...</p>
+    <button class="btn-send" onclick="doShare()">選擇好友並發送</button>
+    <p id="status" class="status-msg">初始化中...</p>
 </div>
 
 <script>
@@ -76,7 +80,7 @@
         try {
             await liff.init({ liffId: LIFF_ID });
             if (liff.isLoggedIn()) {
-                document.getElementById('status').innerText = "LIFF 已就緒 (已登入)";
+                document.getElementById('status').innerText = "LIFF 已就緒";
             } else {
                 liff.login();
             }
@@ -108,7 +112,7 @@
         }
     }
 
-    // 彈幕動畫邏輯
+    // 彈幕效果
     function createDanmaku() {
         const input = document.getElementById('danmakuInput').value;
         const texts = input.split(',');
@@ -116,7 +120,7 @@
         const el = document.createElement('div');
         el.className = 'danmaku';
         el.innerText = texts[Math.floor(Math.random() * texts.length)].trim();
-        el.style.top = Math.random() * 80 + '%';
+        el.style.top = (Math.random() * 80) + '%';
         el.style.left = '100%';
         layer.appendChild(el);
 
@@ -129,18 +133,19 @@
     }
     setInterval(createDanmaku, 2000);
 
-    async function doSend() {
+    async function doShare() {
         const url = document.getElementById('urlInput').value.trim();
         const img = document.getElementById('imgInput').value.trim();
 
-        if (!liff.isInClient()) {
-            alert("請在 LINE 手機版內打開此頁面才可發送訊息");
+        // 檢查是否支援分享選單
+        if (!liff.isApiAvailable('shareTargetPicker')) {
+            alert("目前環境不支援選擇聯絡人，請確認 LIFF 後台已開啟 shareTargetPicker 權限並在 LINE App 內開啟。");
             return;
         }
 
         let msg = [];
         if (mode === 'mp4') {
-            if (!url || !img) { alert("請填寫 MP4 網址與預覽圖網址"); return; }
+            if (!url || !img) { alert("請填寫 MP4 與預覽圖網址"); return; }
             msg = [{ type: "video", originalContentUrl: url, previewImageUrl: img }];
         } else {
             if (!url) { alert("請填寫 YouTube ID"); return; }
@@ -156,7 +161,7 @@
                     },
                     "footer": {
                         "type": "box", "layout": "vertical", "contents": [
-                            { "type": "button", "style": "primary", "color": "#ff0000", "action": { "type": "uri", "label": "開啟播放器", "uri": `https://liff.line.me/${LIFF_ID}?v=${url}` } }
+                            { "type": "button", "style": "primary", "color": "#ff0000", "action": { "type": "uri", "label": "播放影片", "uri": `https://liff.line.me/${LIFF_ID}?v=${url}` } }
                         ]
                     }
                 }
@@ -164,11 +169,13 @@
         }
 
         try {
-            await liff.sendMessages(msg);
-            liff.closeWindow();
+            // 呼叫好友選擇選單
+            const res = await liff.shareTargetPicker(msg);
+            if (res) {
+                liff.closeWindow();
+            }
         } catch (err) {
-            // 精準抓蟲：這裡會跳出為什麼送不出去
-            alert("發送失敗！\n代碼: " + err.code + "\n訊息: " + err.message + "\n\n請確認 LINE Developers Console 的 Scopes 有勾選 chat_message.write");
+            alert("分享失敗！\n代碼: " + err.code + "\n訊息: " + err.message);
         }
     }
 
