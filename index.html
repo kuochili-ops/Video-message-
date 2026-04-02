@@ -3,50 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>白六 YouTube 浪漫分享器</title>
+    <title>白六 YouTube 多效分享器</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-        :root { --line-green: #00b900; --yt-red: #ff4d6d; --bg: #fff5f7; }
-        body { font-family: -apple-system, "Noto Sans TC", sans-serif; background: var(--bg); margin: 0; padding: 0; overflow-x: hidden; }
+        :root { --line-green: #00b900; --yt-red: #ff0000; --bg: #f4f7f9; }
+        body { font-family: -apple-system, "Noto Sans TC", sans-serif; background: var(--bg); margin: 0; padding: 0; }
         
         /* 編輯器 UI */
         #editorUI { padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .card { background: white; border-radius: 25px; padding: 25px; box-shadow: 0 10px 30px rgba(255, 182, 193, 0.3); width: 100%; max-width: 450px; box-sizing: border-box; border: 1px solid #ffe4e8; }
+        .card { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 450px; box-sizing: border-box; }
         
         /* 播放器 UI */
         #playerUI { display: none; width: 100vw; height: 100vh; background: #000; position: fixed; top: 0; left: 0; z-index: 1000; overflow: hidden; }
         .full-video { width: 100%; height: 100%; border: none; }
         #danmakuLayer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1010; overflow: hidden; }
-        
-        /* 櫻花粒子樣式 */
-        .sakura { position: absolute; background: #ffb6c1; border-radius: 100% 0 100% 0; opacity: 0.7; pointer-events: none; z-index: 1011; filter: blur(0.5px); }
-        .danmaku { position: absolute; font-weight: bold; white-space: nowrap; will-change: transform; transition: text-shadow 0.3s; }
+        .danmaku { position: absolute; font-weight: bold; white-space: nowrap; will-change: transform; }
 
-        h2 { color: var(--yt-red); text-align: center; margin: 0 0 20px 0; font-size: 22px; text-shadow: 1px 1px 2px rgba(0,0,0,0.05); }
+        /* 特效元件 */
+        .sakura { position: absolute; background: #ffb6c1; border-radius: 100% 0 100% 0; opacity: 0.6; pointer-events: none; }
+        .sparkle { position: absolute; border-radius: 50%; background: white; pointer-events: none; }
+        
+        /* 電音震動動畫 */
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+            100% { transform: translate(0); }
+        }
+        .mode-glitch { animation: glitch 0.2s infinite; filter: hue-rotate(90deg); }
+
+        h2 { color: var(--yt-red); text-align: center; margin: 0 0 20px 0; }
         .field { margin-bottom: 15px; width: 100%; }
-        .flex-row { display: flex; gap: 10px; margin-bottom: 15px; }
-        .flex-item { flex: 1; }
-        label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #8a5e65; }
-        input, textarea, select { width: 100%; padding: 10px; border: 1.5px solid #ffe4e8; border-radius: 12px; box-sizing: border-box; font-size: 14px; outline: none; background: #fffafb; }
-        input:focus { border-color: var(--yt-red); }
+        label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #666; }
+        input, textarea, select { width: 100%; padding: 10px; border: 1.5px solid #eee; border-radius: 10px; box-sizing: border-box; font-size: 14px; outline: none; }
         
-        .preview-img-container { width: 100%; border-radius: 15px; overflow: hidden; margin-top: 10px; background: #eee; aspect-ratio: 16/9; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .preview-img-container { width: 100%; border-radius: 12px; overflow: hidden; margin-top: 10px; background: #eee; aspect-ratio: 16/9; display: none; }
         #ytThumb { width: 100%; height: 100%; object-fit: cover; }
-
-        .btn-send { width: 100%; padding: 16px; background: linear-gradient(135deg, #ff4d6d, #ff8fa3); color: white; border: none; border-radius: 15px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; box-shadow: 0 4px 15px rgba(255, 77, 109, 0.3); }
-        hr { border: 0; border-top: 1px solid #ffe4e8; margin: 20px 0; }
+        .btn-send { width: 100%; padding: 16px; background: var(--yt-red); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
     </style>
 </head>
 <body>
 
 <div id="playerUI">
-    <iframe id="ytPlayer" class="full-video" allow="autoplay; encrypted-media"></iframe>
+    <div id="videoContainer" style="width:100%; height:100%;">
+        <iframe id="ytPlayer" class="full-video" allow="autoplay; encrypted-media"></iframe>
+    </div>
     <div id="danmakuLayer"></div>
 </div>
 
 <div id="editorUI">
     <div class="card">
-        <h2>🌸 浪漫模式影片製作</h2>
+        <h2>🎥 影片特效工坊</h2>
         
         <div class="field">
             <label>YouTube / Shorts 網址</label>
@@ -55,34 +64,41 @@
         </div>
 
         <div class="field">
-            <label>按鈕文字</label>
-            <input type="text" id="btnLabel" value="開啟驚喜">
+            <label>選擇視覺特效</label>
+            <select id="vMode">
+                <option value="none">無特效 (純淨播放)</option>
+                <option value="romance">🌸 浪漫模式 (櫻花飄落)</option>
+                <option value="glitch">⚡ 電音模式 (震動幻覺)</option>
+                <option value="star">✨ 星空模式 (閃爍星光)</option>
+            </select>
         </div>
-
-        <hr>
 
         <div class="field">
-            <label>浪漫留言 (以分號 ; 隔開)</label>
-            <textarea id="danmakuText" rows="2">🌸🌸🌸; 愛心發射！; ❤️❤️❤️; 質感滿分; 𓃥 白六浪漫推薦</textarea>
+            <label>按鈕文字</label>
+            <input type="text" id="btnLabel" value="觀看影片">
         </div>
 
-        <div class="flex-row">
-            <div class="flex-item">
-                <label>文字顏色</label>
-                <input type="color" id="dColor" value="#ffebf0">
+        <div class="field">
+            <label>彈幕內容 (以分號 ; 隔開)</label>
+            <textarea id="danmakuText" rows="2">太棒了！; 𓃥 白六推薦; 666666; 質感滿分</textarea>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-bottom:15px;">
+            <div style="flex:1">
+                <label>彈幕顏色</label>
+                <input type="color" id="dColor" value="#ffffff">
             </div>
-            <div class="flex-item">
+            <div style="flex:1">
                 <label>字體大小</label>
                 <select id="dSize">
                     <option value="18px">小</option>
                     <option value="24px" selected>中</option>
                     <option value="32px">大</option>
-                    <option value="40px">特大</option>
                 </select>
             </div>
         </div>
 
-        <button class="btn-send" onclick="sendFlex()">選擇好友發送浪漫</button>
+        <button class="btn-send" onclick="sendFlex()">選擇好友發送</button>
     </div>
 </div>
 
@@ -97,21 +113,12 @@
 
             const params = new URLSearchParams(window.location.search);
             const v = params.get('v');
-            const editMode = params.get('mode') === 'edit';
-
             if (v) {
-                currentYtId = v;
-                if (params.get('b')) document.getElementById('btnLabel').value = params.get('b');
-                if (params.get('d')) document.getElementById('danmakuText').value = decodeURIComponent(params.get('d'));
-                if (params.get('c')) document.getElementById('dColor').value = decodeURIComponent(params.get('c'));
-                if (params.get('s')) document.getElementById('dSize').value = params.get('s');
-                
-                if (editMode) {
-                    document.getElementById('ytUrl').value = `https://www.youtube.com/watch?v=${v}`;
-                    handleUrlChange();
+                if (params.get('mode') === 'edit') {
+                    fillEditor(params);
                     document.getElementById('editorUI').style.display = 'flex';
                 } else {
-                    startPlayer(v, params.get('d'), params.get('c'), params.get('s'));
+                    startPlayer(params);
                 }
             } else {
                 document.getElementById('editorUI').style.display = 'flex';
@@ -119,60 +126,79 @@
         } catch (e) { console.error(e); }
     }
 
+    function fillEditor(p) {
+        currentYtId = p.get('v');
+        document.getElementById('ytUrl').value = `https://www.youtube.com/watch?v=${currentYtId}`;
+        document.getElementById('vMode').value = p.get('m') || 'none';
+        document.getElementById('btnLabel').value = p.get('b') || '觀看影片';
+        document.getElementById('danmakuText').value = decodeURIComponent(p.get('d') || '');
+        document.getElementById('dColor').value = decodeURIComponent(p.get('c') || '#ffffff');
+        document.getElementById('dSize').value = p.get('s') || '24px';
+        handleUrlChange();
+    }
+
     function handleUrlChange() {
         const url = document.getElementById('ytUrl').value.trim();
-        let videoId = "";
-        if (url.includes("shorts/")) {
-            videoId = url.split("shorts/")[1].split(/[?&]/)[0];
-        } else {
-            const match = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/);
-            if (match && match[2].length == 11) videoId = match[2];
+        let id = "";
+        if (url.includes("shorts/")) id = url.split("shorts/")[1].split(/[?&]/)[0];
+        else {
+            const m = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/);
+            if (m && m[2].length == 11) id = m[2];
         }
-        if (videoId) {
-            currentYtId = videoId;
-            document.getElementById('ytThumb').src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+        if (id) {
+            currentYtId = id;
+            document.getElementById('ytThumb').src = `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
             document.getElementById('thumbContainer').style.display = 'block';
         }
     }
 
-    function startPlayer(vId, dText, color, size) {
+    function startPlayer(p) {
         document.getElementById('editorUI').style.display = 'none';
         document.getElementById('playerUI').style.display = 'block';
+        const vId = p.get('v');
+        const mode = p.get('m');
         document.getElementById('ytPlayer').src = `https://www.youtube.com/embed/${vId}?autoplay=1&mute=1&rel=0`;
 
-        // 啟動櫻花特效
-        setInterval(createSakura, 400);
+        // 特效邏輯
+        if (mode === 'romance') setInterval(createSakura, 500);
+        if (mode === 'star') setInterval(createStar, 300);
+        if (mode === 'glitch') document.getElementById('videoContainer').classList.add('mode-glitch');
 
+        // 彈幕邏輯
+        const dText = p.get('d');
         if (dText) {
-            const colorVal = color ? decodeURIComponent(color) : '#ffebf0';
-            const sizeVal = size || '24px';
             const danmakus = decodeURIComponent(dText).split(';');
+            const color = decodeURIComponent(p.get('c') || '#ffffff');
+            const size = p.get('s') || '24px';
             setInterval(() => {
                 const text = danmakus[Math.floor(Math.random() * danmakus.length)];
-                if(text && text.trim()) createDanmaku(text.trim(), colorVal, sizeVal);
-            }, 1000);
+                if(text && text.trim()) createDanmaku(text.trim(), color, size);
+            }, 1200);
         }
     }
 
-    // 櫻花粒子生成
     function createSakura() {
         const layer = document.getElementById('danmakuLayer');
-        const sakura = document.createElement('div');
-        sakura.className = 'sakura';
+        const s = document.createElement('div');
+        s.className = 'sakura';
         const size = Math.random() * 10 + 5 + 'px';
-        sakura.style.width = size;
-        sakura.style.height = size;
-        sakura.style.left = Math.random() * 100 + '%';
-        sakura.style.top = '-20px';
-        layer.appendChild(sakura);
+        s.style.width = size; s.style.height = size;
+        s.style.left = Math.random() * 100 + '%';
+        s.style.top = '-20px';
+        layer.appendChild(s);
+        s.animate([{ transform: `translate(0,0) rotate(0deg)`, opacity: 0.6 }, { transform: `translate(${Math.random()*100-50}px, 100vh) rotate(720deg)`, opacity: 0 }], { duration: 5000, easing: 'linear' }).onfinish = () => s.remove();
+    }
 
-        const duration = Math.random() * 3000 + 4000;
-        const anim = sakura.animate([
-            { transform: `translate(0, 0) rotate(0deg)`, opacity: 0.7 },
-            { transform: `translate(${Math.random() * 100 - 50}px, 100vh) rotate(720deg)`, opacity: 0 }
-        ], { duration: duration, easing: 'linear' });
-
-        anim.onfinish = () => sakura.remove();
+    function createStar() {
+        const layer = document.getElementById('danmakuLayer');
+        const star = document.createElement('div');
+        star.className = 'sparkle';
+        const size = Math.random() * 4 + 'px';
+        star.style.width = size; star.style.height = size;
+        star.style.left = Math.random() * 100 + '%'; star.style.top = Math.random() * 100 + '%';
+        star.style.boxShadow = '0 0 10px white';
+        layer.appendChild(star);
+        star.animate([{ opacity: 0, scale: 0 }, { opacity: 1, scale: 1.5 }, { opacity: 0, scale: 0 }], { duration: 2000 }).onfinish = () => star.remove();
     }
 
     function createDanmaku(text, color, size) {
@@ -180,50 +206,39 @@
         const el = document.createElement('div');
         el.className = 'danmaku';
         el.innerText = text;
-        el.style.color = color;
-        el.style.fontSize = size;
-        // 浪漫模式專屬發光陰影
-        el.style.textShadow = `0 0 10px ${color}, 0 0 20px rgba(255,182,193,0.8)`;
-        el.style.top = (Math.random() * 80 + 5) + '%';
-        el.style.left = '100%';
+        el.style.color = color; el.style.fontSize = size;
+        el.style.textShadow = '2px 2px 4px rgba(0,0,0,0.8)';
+        el.style.top = (Math.random() * 80 + 5) + '%'; el.style.left = '100%';
         layer.appendChild(el);
-
-        const anim = el.animate([{ transform: 'translateX(0)' }, { transform: `translateX(-${window.innerWidth + 1200}px)` }], { duration: 7000 + Math.random() * 2000, easing: 'linear' });
-        anim.onfinish = () => el.remove();
+        el.animate([{ transform: 'translateX(0)' }, { transform: `translateX(-${window.innerWidth + 1200}px)` }], { duration: 7000 + Math.random()*2000, easing: 'linear' }).onfinish = () => el.remove();
     }
 
     async function sendFlex() {
-        if (!currentYtId) { alert("請先輸入網址"); return; }
-        const btnLabel = document.getElementById('btnLabel').value || "觀看驚喜";
-        const dText = encodeURIComponent(document.getElementById('danmakuText').value);
-        const dColor = encodeURIComponent(document.getElementById('dColor').value);
-        const dSize = document.getElementById('dSize').value;
-        const baseParams = `v=${currentYtId}&d=${dText}&c=${dColor}&s=${dSize}&b=${encodeURIComponent(btnLabel)}`;
+        if (!currentYtId) { alert("請貼上影片網址"); return; }
+        const mode = document.getElementById('vMode').value;
+        const b = encodeURIComponent(document.getElementById('btnLabel').value);
+        const d = encodeURIComponent(document.getElementById('danmakuText').value);
+        const c = encodeURIComponent(document.getElementById('dColor').value);
+        const s = document.getElementById('dSize').value;
         
-        const playLink = `https://liff.line.me/${LIFF_ID}?${baseParams}`;
-        const shareLink = `https://liff.line.me/${LIFF_ID}?${baseParams}&mode=edit`;
+        const params = `v=${currentYtId}&m=${mode}&b=${b}&d=${d}&c=${c}&s=${s}`;
+        const playLink = `https://liff.line.me/${LIFF_ID}?${params}`;
+        const editLink = `https://liff.line.me/${LIFF_ID}?${params}&mode=edit`;
 
         const flexMsg = [{
             type: "flex",
-            altText: "🌸 白六送你一個浪漫驚喜",
+            altText: "🎥 專屬影片分享",
             contents: {
                 "type": "bubble",
                 "hero": {
-                    "type": "image",
-                    "url": `https://img.youtube.com/vi/${currentYtId}/hqdefault.jpg`,
+                    "type": "image", "url": `https://img.youtube.com/vi/${currentYtId}/hqdefault.jpg`,
                     "size": "full", "aspectRatio": "16:9", "aspectMode": "cover",
                     "action": { "type": "uri", "uri": playLink }
                 },
                 "footer": {
                     "type": "box", "layout": "horizontal", "spacing": "md", "contents": [
-                        {
-                            "type": "button", "style": "primary", "color": "#ff4d6d", "height": "sm",
-                            "action": { "type": "uri", "label": btnLabel, "uri": playLink }
-                        },
-                        {
-                            "type": "button", "style": "secondary", "color": "#ffb6c1", "height": "sm",
-                            "action": { "type": "uri", "label": "轉發分享", "uri": shareLink }
-                        }
+                        { "type": "button", "style": "primary", "color": "#ff0000", "height": "sm", "action": { "type": "uri", "label": decodeURIComponent(b), "uri": playLink } },
+                        { "type": "button", "style": "secondary", "color": "#888888", "height": "sm", "action": { "type": "uri", "label": "轉發分享", "uri": editLink } }
                     ]
                 }
             }
